@@ -1,0 +1,58 @@
+import groovy.json.JsonOutput;
+
+def tag
+def hub = "localhost:50041"
+
+def getShellOutput(cmd) {
+    def randomNumber = Math.random()*1000;
+    def file = "read-from-the-output-${randomNumber}.txt"
+    sh cmd + " > $file"
+    def value = readFile(file).trim()
+    sh "rm $file"
+
+    return value
+}
+
+node {
+   stage('git') {
+      // Get some code from a GitHub repository
+      git branch: 'develop', url: 'https://github.com/vviital/NodeAPI.git';
+      
+      tag = getShellOutput('git tag -l --contains HEAD');
+      
+      def env =  System.getenv();
+       
+      println env;
+       
+      if (tag.size() == 0) {
+          throw new Error('Tag is not specified');
+      }
+   }
+   
+   stage('build') {
+       sh "echo 'docker build --tag ${hub}/api:${tag} .'"
+       sh "docker build --tag ${hub}/api:${tag} .";
+   }
+   
+   stage('publish') {
+       sh "docker push ${hub}/api:${tag}"
+       
+       sh "docker images ls"
+   }
+   
+   stage('deploy') {
+       def image = "hub:5000/api:${tag}";
+       
+
+       
+       def body = JsonOutput.toJson([ name: "api", image: image, env: [] ]);
+       
+       sh "echo ${body}";
+       sh "curl -XPOST -d '${body}' http://staging:3000"
+   }
+   
+   stage('clean up') {
+      sh "docker-compose down"
+      sh "docker rmi api:${tag}"
+   }
+}
