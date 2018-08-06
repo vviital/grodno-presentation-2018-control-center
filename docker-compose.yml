@@ -1,0 +1,56 @@
+version: '3.7'
+
+services:
+  production:
+    build:
+      context: ./docker
+      dockerfile: machine.dockerfile
+    ports:
+      - 50042:3000
+      - 50043:1337
+    depends_on:
+      - hub
+    tty: true
+    privileged: true
+    restart: always
+
+  staging:
+    build:
+      context: ./docker
+      dockerfile: machine.dockerfile
+    ports:
+      - 50044:3000
+      - 50045:1337
+    depends_on:
+      - hub
+    tty: true
+    privileged: true
+    restart: always
+
+  hub:
+    image: registry:2.6.2
+    ports:
+      - 50041:5000
+    restart: always
+  
+  jenkins:
+    build:
+      context: ./docker
+      dockerfile: jenkins.dockerfile
+    ports:
+      - 50080:8080
+      - 50081:50000
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  mongo:
+    image: mongo:3.4.4
+    volumes:
+      - mongodb:/data/db
+    restart: always
+
+volumes:
+  mongodb:
+  jenkins_home:
+  docker-machine-sock:  
